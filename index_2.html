@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VR mini game</title>
+    <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+    <script src="https://unpkg.com/aframe-audioanalyser-component@3.0.3/dist/aframe-audioanalyser-component.min.js"></script>
+</head>
+ <body>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+        }
+        #hud {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            color: white;
+            font-size: 24px;
+            text-shadow: 2px 2px 4px black;
+            z-index: 1000;
+            background: rgba(0,0,0,0.5);
+            padding: 10px;
+            border-radius: 10px;
+        }
+        .timer {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            color: white;
+            font-size: 24px;
+            text-shadow: 2px 2px 4px black;
+            z-index: 1000;
+            background: rgba(0,0,0,0.5);
+            padding: 10px;
+            border-radius: 10px;
+        }
+        #gameOver {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 48px;
+            text-shadow: 2px 2px 4px black;
+            z-index: 1000;
+            background: rgba(0,0,0,0.8);
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            display: none;
+        }
+        .restart-btn {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 20px;
+            border-radius: 10px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+        .restart-btn:hover {
+            background: #45a049;
+        }
+    </style>
+
+    <div id="hud">Собрано: <span id="score">0</span>/10</div>
+    <div class="timer" id="timer">Время: <span id="timeLeft">60</span> сек</div>
+    <div id="gameOver">
+        <div id="gameOverText"></div>
+        <button class="restart-btn" onclick="restartGame()">Начать заново</button>
+    </div>
+    
+    <a-scene  physics="debug: false; gravity: 0 -9.8 0" 
+              cursor="rayOrigin: mouse"
+              raycaster="objects: .collectible">
+        <a-sky color="#00FFFF"></a-sky>
+
+        <a-plane position="0 0 -4" rotation="-90 0 0" width="30" height="30" color="#228B22"></a-plane>
+
+        <a-entity id="player" position="0 1.6 0">
+            <a-camera id="camera" look-controls="pointerLockEnabled: true" wasd-controls="acceleration: 65">
+                <a-cursor></a-cursor>
+            </a-camera>
+        </a-entity>
+
+        <a-box id="box1" class="collectible" position="-5 0.5 -3" rotaiton="0 45 45" color="#9932CC" static-body dynamic-body="mass: 1"></a-box>
+        <a-sphere id="sphere1" class="collectible" position="4 1.25 -7" radius="1.25" color="#EF2D5E" dynamic-body="mass: 1"></a-sphere>
+        <a-cone id="cone1" class="collectible" position="8 1 -3" rotation="0 45 45" color="#00FF22" scale="0.5 1 0.5" dynamic-body="mass: 1"></a-cone>
+        <a-sphere id="sphere2" class="collectible" position="3 1 -10" rotation="0 65 65" color="#999" 
+         animation="property: position; to: 1 3 -5; dur: 2000; easing: linear; loop: true" scale="0.5 0.5 0.5" dynamic-body="mass: 1"></a-sphere>
+        <a-cylinder id="cylinder2" class="collectible" position="-6 1 -5" rotation="0 0 0" color="#999" 
+         animation="property: rotation; to: 0 360 360; loop: true; dur: 10000" scale="0.5 2 0.5" dynamic-body="mass: 1"></a-cylinder>
+        <a-sphere id="sphere3" class="collectible" position="-10 1 10" rotation="0 45 45" color="#8B4513" dynamic-body="mass: 1"></a-sphere>
+        <a-cone id="cone2" class="collectible" position="7 1 0" rotation="0 45 45" scale="0.5 1 0.5" dynamic-body="mass: 1"></a-cone>
+        <a-box id="box2" class="collectible" position="6 1 -12" rotation="0 45 45" color="#8B4513" dynamic-body="mass: 1"></a-box>
+        <!-- <a-box id="box2" class="collectible" position="-3 1 -5" rotation="0 45 45" color="#8B4513" dynamic-body="mass: 1"></a-box>
+        <a-cone id="cone3" class="collectible" position="0 3 -6" color="#FFFF00" dynamic-body="mass: 1"></a-cone> -->
+
+        <a-entity 
+            gltf-model="https://cdn.aframe.io/test-models/models/Tree/cloud_tree.glb"
+            position="0 0 -20"
+            scale="2 2 2"
+            static-body
+        ></a-entity>
+
+        <a-entity class="collectible" id="movingObj" geometry="primitive: cone" material="color: red"
+                  position="0 5 -8" animation="property: position; to: 8 2 -8; dur: 2000; loop: true; dir: alternate"
+                  dynamic-body="mass: 2">
+        </a-entity>
+
+        <a-entity class="collectible" id="movingObj2" geometry="primitive: sphere" material="color: yellow"
+                  position="0 2 -8" animation="property: position; to: -5 8 8; dur: 5000; loop: true; dir: alternate"
+                  dynamic-body="mass: 2">
+        </a-entity>
+
+        <a-entity geometry="primitive: box" material="color: blue"
+                  position="0 5 -10" dynamic-body id="fallingBox">
+        </a-entity>
+        
+        <a-entity id="gameOverPanel" visible="false">
+            <a-plane 
+                position="0 1.5 -1.5" 
+                width="4" 
+                height="2" 
+                color="#333333" 
+                opacity="0.9"
+            ></a-plane>
+            <a-text 
+                id="gameOverText"
+                value="Игра окончена!\nСчет: 0"
+                position="0 2 -1.5"
+                color="#FF0000"
+                align="center"
+                width="6"
+            ></a-text>
+            <a-text 
+                id="restartText"
+                value="Кликни чтобы\nперезапустить"
+                position="0 1.3 -1.5"
+                color="#00FF00"
+                align="center"
+                width="6"
+            ></a-text>
+        </a-entity>
+
+        <a-assets>
+            <audio id="collectSound" src="https://github.com/jackyyang09/Simple-Unity-Audio-Manager.git"></audio>
+        </a-assets>
+        <a-sound src="#collectSound" autoplay="false" id="soundCollect"></a-sound>
+        <a-sound src="yoursound.wav" autoplay="false" id="collectSound"></a-sound>
+    </a-scene>
+
+    <script>
+        
+        let score = 0;
+        let timeLeft = 60;
+        let gameActive = true;
+        const totalObjects = 10;
+        let timerInterval;
+
+        function initGame() {
+            score = 0;
+            timeLeft = 60;
+            gameActive = true;
+            document.getElementById('score').textContent = score;
+            document.getElementById('timeLeft').textContent = timeLeft;
+            document.getElementById('gameOver').style.display = 'none';
+            
+            for (let i = 1; i <= totalObjects; i++) {
+                const obj = document.getElementById(`obj${i}`);
+                obj.setAttribute('visible', 'true');
+                obj.setAttribute('data-collected', 'false');
+                obj.setAttribute('position', getInitialPosition(i));
+            }
+            
+            clearInterval(timerInterval);
+            timerInterval = setInterval(updateTimer, 1000);
+        }
+
+        setInterval(updateTimer, 1000);
+
+        // function getInitialPosition(index) {
+        //     const positions = [
+        //         {x: -5, y: 1, z: -5},
+        //         {x: 5, y: 1, z: -5},
+        //         {x: -8, y: 1, z: 0},
+        //         {x: 8, y: 1, z: 0},
+        //         {x: -5, y: 1, z: 5},
+        //         {x: 5, y: 1, z: 5},
+        //         {x: 0, y: 1, z: -10},
+        //         {x: 0, y: 1, z: 10},
+        //         {x: -10, y: 1, z: -10},
+        //         {x: 10, y: 1, z: 10}
+        //     ];
+        //     return `${positions[index-1].x} ${positions[index-1].y} ${positions[index-1].z}`;
+        // }
+
+        function updateTimer() {
+            if (!gameActive) return;
+            
+            timeLeft--;
+            document.getElementById('timeLeft').textContent = timeLeft;
+            
+            if (timeLeft <= 0) {
+                endGame(false);
+            }
+        }
+
+        function collectObject(objId) {
+            if (!gameActive) return;
+            
+            const obj = document.getElementById(objId);
+            if (obj.getAttribute('data-collected') === 'true') return;
+            
+            obj.setAttribute('data-collected', 'true');
+            
+            try {
+                document.querySelector('#soundCollect').components.sound.playSound();
+            } catch (e) {
+                console.log("Звук не воспроизведен:", e);
+            }
+            
+            const objPos = obj.getAttribute('position');
+            
+            obj.setAttribute('animation', {
+                property: 'scale',
+                to: '0 0 0',
+                dur: 300,
+                easing: 'easeInQuad'
+            });
+            
+            setTimeout(() => {
+                obj.setAttribute('visible', 'false');
+                obj.removeAttribute('animation');
+                obj.setAttribute('scale', '1 1 1');
+            }, 300);
+            
+            score++;
+            document.getElementById('score').textContent = score;
+            
+            if (score >= totalObjects) {
+                endGame(true);
+            }
+        }
+
+        function endGame(isWin) {
+            gameActive = false;
+            // clearInterval(timerInterval);
+            
+            const gameOver = document.getElementById('gameOver');
+            const gameOverText = document.getElementById('gameOverText');
+            
+            gameOverText.textContent = `ВРЕМЯ ВЫШЛО! Собрано объектов: ${score}/${totalObjects} за ${60 - timeLeft} секунд!`;
+            gameOverText.style.color = "#4CAF50";
+            
+            gameOver.style.display = 'block';
+        }
+
+        function restartGame() {
+            initGame();
+        }
+
+        AFRAME.registerComponent('custom-gravity', {
+            init: function () {
+                this.el.setAttribute('dynamic-body', 'mass: 2');
+            }
+        });
+
+        AFRAME.registerComponent('simple-particles', {
+            schema: {
+                color: {type: 'string', default: 'yellow'},
+                count: {type: 'number', default: 10}
+            },
+            
+            init: function() {
+                this.particles = [];
+            },
+            
+            play: function() {
+                const color = this.data.color;
+                const count = this.data.count;
+                
+                for (let i = 0; i < count; i++) {
+                    const particle = document.createElement('a-sphere');
+                    particle.setAttribute('radius', '0.1');
+                    particle.setAttribute('color', color);
+                    particle.setAttribute('position', this.el.getAttribute('position'));
+                    
+                    const x = (Math.random() - 0.5) * 2;
+                    const y = Math.random() * 2;
+                    const z = (Math.random() - 0.5) * 2;
+                    
+                    particle.setAttribute('animation', {
+                        property: 'position',
+                        to: `${x} ${y} ${z}`,
+                        dur: 1000,
+                        easing: 'easeOutQuad'
+                    });
+                    
+                    particle.setAttribute('animation__scale', {
+                        property: 'scale',
+                        to: '0 0 0',
+                        dur: 1000,
+                        easing: 'easeInQuad'
+                    });
+                    
+                    this.el.sceneEl.appendChild(particle);
+                    this.particles.push(particle);
+                    
+                    setTimeout(() => {
+                        if (particle.parentNode) {
+                            particle.parentNode.removeChild(particle);
+                        }
+                    }, 1000);
+                }
+            }
+        });
+
+        document.addEventListener('click', function (event) {
+            const cursor = document.querySelector('a-cursor');
+            if (cursor && cursor.components.cursor) {
+                const intersected = cursor.components.cursor.intersectedEl;
+                
+                if (intersected && intersected.classList.contains('collectible')) {
+                    collectObject(intersected.id);
+                    
+                    const explosion = document.createElement('a-entity');
+                    explosion.setAttribute('position', intersected.getAttribute('position'));
+                    explosion.setAttribute('simple-particles', 'color: yellow; count: 15');
+                    document.querySelector('a-scene').appendChild(explosion);
+                    
+                    setTimeout(() => {
+                        if (explosion.parentNode) {
+                            explosion.parentNode.removeChild(explosion);
+                        }
+                    }, 1100);
+                }
+            }
+        });
+
+        window.addEventListener('DOMContentLoaded', function () {
+
+            setTimeout(() => {
+                initGame();
+                
+                const fallingBox = document.getElementById('fallingBox');
+                if (fallingBox) {
+                    fallingBox.setAttribute('custom-gravity', '');
+                }
+                
+                for (let i = 1; i <= totalObjects; i++) {
+                    const obj = document.getElementById(`obj${i}`);
+                    if (obj) {
+                        obj.addEventListener('click', function() {
+                            collectObject(this.id);
+                        });
+                    }
+                }
+                
+                console.log("Игра успешно загружена!");
+            }, 1000);
+        });
+
+    
+    </script>
+</body>
+</html>
